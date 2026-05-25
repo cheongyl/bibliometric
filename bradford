@@ -1,0 +1,119 @@
+# BRADFORD's LAW
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(stringr)
+
+# 1. Load the dataset
+# Make sure your working directory is set to where 'scopus 662.csv' is located
+df <- read_csv("C:/CH/A to Publish/Proposal bibliometric on Wolbachia/2026-05-22 NEW RESULTS/scopus 662.csv")
+
+# 2. Clean and format journal names to ensure perfect consistency
+# - Replace "&" with "and"
+# - Remove leading/trailing spaces
+# - Convert to UPPERCASE
+df <- df %>%
+  mutate(
+    `Source title` = str_replace_all(`Source title`, "&", "and"),
+    `Source title` = str_trim(`Source title`),
+    `Source title` = toupper(`Source title`)
+  )
+
+# 3. Prepare the data
+# Group by 'Source title', count articles, and sort in descending order
+journal_freq <- df %>%
+  group_by(`Source title`) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  filter(!is.na(`Source title`))
+
+# Calculate cumulative sums and cumulative percentages
+journal_freq <- journal_freq %>%
+  mutate(
+    Rank = row_number(),
+    Cum_Count = cumsum(Count),
+    Log_Rank = log10(Rank)
+  )
+
+total_articles <- sum(journal_freq$Count)
+total_journals <- nrow(journal_freq)
+
+# 4. Calculate Bradford's Zones
+# Divide into 3 roughly equal chunks (total_articles / 3)
+threshold <- total_articles / 3
+
+journal_freq <- journal_freq %>%
+  mutate(
+    Zone = case_when(
+      Cum_Count <= threshold ~ "Zone 1 (Core)",
+      Cum_Count > threshold & Cum_Count <= 2 * threshold ~ "Zone 2",
+      Cum_Count > 2 * threshold ~ "Zone 3"
+    )
+  )
+
+# 5. Summary of Zones (Updated with Percentages)
+zone_summary <- journal_freq %>%
+  group_by(Zone) %>%
+  summarise(
+    Number_of_Journals = n(),
+    Total_Articles = sum(Count)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    `%_of_Total_Journals` = round((Number_of_Journals / total_journals) * 100, 2),
+    `%_of_Total_Articles` = round((Total_Articles / total_articles) * 100, 2)
+  )
+
+print("Bradford's Law Zone Summary:")
+print(zone_summary)
+
+print("Core Journals (Zone 1):")
+print(journal_freq %>% filter(Zone == "Zone 1 (Core)") %>% select(`Source title`, Count) )
+
+# 6. Bradford Curve Plot (Leimkuhler curve)
+# Plots cumulative number of articles against the log of journal rank
+ggplot(journal_freq, aes(x = Log_Rank, y = Cum_Count)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(aes(color = Zone), size = 2) +
+  labs(
+    title = "Bradford's Law Cumulative Curve",
+    x = "Log(Rank of Journals)",
+    y = "Cumulative Number of Articles"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+
+
+# --- Continuing from the previous R script ---
+# 7. PERCENTAGE OF ERROR FOR BRADFORD'S LAW
+
+# Extract observed counts for each zone
+z1_count <- nrow(journal_freq %>% filter(Zone == "Zone 1 (Core)"))
+z2_count <- nrow(journal_freq %>% filter(Zone == "Zone 2"))
+z3_count <- nrow(journal_freq %>% filter(Zone == "Zone 3"))
+
+total_observed <- z1_count + z2_count + z3_count
+
+# Calculate multipliers
+k1 <- z2_count / z1_count
+k2 <- z3_count / z2_count
+mean_k <- (k1 + k2) / 2
+
+# Calculate expected journals
+expected_journals <- z1_count + (z1_count * mean_k) + (z1_count * (mean_k^2))
+
+# Calculate percentage error
+error_percentage <- (abs(expected_journals - total_observed) / total_observed) * 100
+
+# Print the results
+cat("\n--- Bradford's Law Error Calculation ---\n")
+cat("Observed Journals: ", total_observed, "\n")
+cat("Mean Multiplier (k): ", round(mean_k, 4), "\n")
+cat("k1 Multiplier (k): ", round(k1, 4), "\n")
+cat("k2 Multiplier (k): ", round(k2, 4), "\n")
+cat("Sum Multiplier (k): ", round(k2+k1, 4), "\n")
+cat("Expected Journals: ", round(expected_journals, 4), "\n")
+cat("Percentage of Error: ", round(error_percentage, 4), "%\n")
+
