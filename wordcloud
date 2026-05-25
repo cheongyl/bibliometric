@@ -1,0 +1,55 @@
+import nltk
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+from nltk.util import ngrams
+from collections import Counter
+
+# Download necessary NLTK resources
+nltk.download('stopwords')
+nltk.download('punkt')
+
+# Read the text file (replace 'your_text_file.txt' with your file path)
+with open('C:\CH\A to Publish\Proposal bibliometric on Wolbachia\python\data_all.txt', 'r', encoding='utf-8') as file:
+    text = file.read()
+
+# Preprocess the text: tokenize and remove stopwords
+stop_words = set(stopwords.words('english'))
+words = nltk.word_tokenize(text.lower())  # Tokenize and convert to lowercase
+filtered_words = [word for word in words if word.isalpha() and word not in stop_words]  # Remove stopwords and non-alphabetical characters
+
+# Generate bigrams and trigrams
+bigrams = list(ngrams(filtered_words, 2))
+trigrams = list(ngrams(filtered_words, 3))
+
+# Convert bigrams and trigrams to strings
+bigram_strs = [' '.join(bigram) for bigram in bigrams]
+trigram_strs = [' '.join(trigram) for trigram in trigrams]
+
+# Count the frequency of bigrams and trigrams
+bigram_counts = Counter(bigram_strs)
+trigram_counts = Counter(trigram_strs)
+
+# Generate WordCloud for Bigrams
+bigram_wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(bigram_counts)
+
+# Plot the Bigram WordCloud
+plt.figure(figsize=(10, 6))
+plt.imshow(bigram_wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title("Bigram WordCloud", fontsize=16)
+# Save the WordCloud as a JPEG file
+plt.savefig("C:\CH\A to Publish\Proposal bibliometric on Wolbachia\python\wordcloud_bigram.jpg", format='jpeg')
+plt.show()
+
+# Generate WordCloud for Trigrams
+trigram_wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(trigram_counts)
+
+# Plot the Trigram WordCloud
+plt.figure(figsize=(10, 6))
+plt.imshow(trigram_wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title("Trigram WordCloud", fontsize=16)
+# Save the WordCloud as a JPEG file
+plt.savefig("C:\CH\A to Publish\Proposal bibliometric on Wolbachia\python\wordcloud_trigram.jpg", format='jpeg')
+plt.show()
