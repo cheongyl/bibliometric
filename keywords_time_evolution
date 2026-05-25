@@ -1,0 +1,60 @@
+library(tidyverse)
+library(ggalluvial)
+
+# 1. Load Scopus CSV
+df <- read.csv("C:/scopus 662.csv")
+
+
+# 2. Define time periods ----
+get_period <- function(year) {
+  if (year >= 2000 & year <= 2005) {
+    return("2000-2005")
+  } else if (year >= 2006 & year <= 2010) {
+    return("2006–2010")
+  } else if (year >= 2011 & year <= 2015) {
+    return("2011–2015")
+  } else if (year >= 2016 & year <= 2020) {
+    return("2016–2020")
+  } else if (year >= 2021 & year <= 2025) {
+    return("2021–2025")
+  } else {
+    return(NA)
+  }
+}
+
+df$Period <- sapply(df$Year, get_period)
+
+# 3. Split keywords (assuming separated by ";") ----
+df <- df %>%
+  mutate(Keyword = strsplit(as.character(Author.Keywords), ";")) %>%
+  unnest(Keyword) %>%
+  mutate(Keyword = str_trim(tolower(Keyword)))
+
+# 4. Drop duplicates so each keyword only counted once per period ----
+df_unique <- df %>%
+  distinct(Period, Keyword)
+
+# 5. Keep only top N keywords per period ----
+N <- 30  # change this to keep more or fewer
+top_keywords <- df %>%
+  group_by(Period, Keyword) %>%
+  summarise(Freq = n(), .groups = "drop") %>%
+  group_by(Period) %>%
+  slice_max(Freq, n = N) %>%
+  ungroup()
+
+df_filtered <- df_unique %>%
+  semi_join(top_keywords, by = c("Period", "Keyword")) %>%
+  mutate(value = 1)
+
+# 6. Plot Graph ----
+ggplot(df_filtered,
+       aes(x = Period, stratum = Keyword, alluvium = Keyword,
+           y = value, fill = Keyword, label = Keyword)) +
+  geom_flow(stat = "alluvium", lode.guidance = "frontback") +
+  geom_stratum() +
+  geom_text(stat = "stratum", size = 3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = "Evolution of Keywords in Scopus Data",
+       y = NULL)
