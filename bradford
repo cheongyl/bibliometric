@@ -85,8 +85,6 @@ ggplot(journal_freq, aes(x = Log_Rank, y = Cum_Count)) +
   theme_minimal() +
   scale_color_brewer(palette = "Set1")
 
-
-# --- Continuing from the previous R script ---
 # 7. PERCENTAGE OF ERROR FOR BRADFORD'S LAW
 
 # Extract observed counts for each zone
